@@ -5,30 +5,34 @@
 #include "config.h"
 
 void printUsage(const char *progName) {
-  fprintf(stderr, "Usage: %s -r <radius> -n <number>\n", progName);
+  fprintf(stderr, "Usage: %s -r <radius> -v <velocity> -n <number>\n", progName);
   exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[]) {
   int opt;
   double radius = -1.0;
+  double velocity = -1.0;
   int number = -1;
 
-  while ((opt = getopt(argc, argv, "r:n:")) != -1) {
+  while ((opt = getopt(argc, argv, "r:v:n:")) != -1) {
     switch (opt) {
       case 'r':
-	radius = atof(optarg);
-	break;
+        radius = atof(optarg);
+        break;
+      case 'v':
+        radius = atof(optarg);
+        break;
       case 'n':
-	number = atoi(optarg);
-	break;
+        velocity = atoi(optarg);
+        break;
       default: /* '?' */
-	printUsage(argv[0]);
+        printUsage(argv[0]);
     }
   }
 
   // Check if both arguments were provided
-  if (radius == -1.0 || number == -1) {
+  if (radius == -1.0 || velocity == -1.0 || number == -1) {
     printUsage(argv[0]);
   }
 
@@ -57,14 +61,14 @@ int main(int argc, char *argv[]) {
   // Compute interatomic force list
   double rF[1799];
   double Flist[1799];
-  compForceList (rr, yss, rF, Flist,1800);
+  compForceList (rr, yss, rF, Flist, 1800);
 
   // Array to hold twin particles
   int noP = number; // No of particle pairs
   Particle* particles = (Particle *)malloc (2 * noP * sizeof (Particle));
 
   // Initialize random particleSimulation
-  initRandomParticle (particles, noP, Radius);
+  initRandomParticle (particles, noP, Radius, velocity);
 
   // Write particle properties in a file
   char ffname[80] = "./results/particlefile.txt";

@@ -6,6 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void diff(double* arr, double* result, int length) {
   for (int i = 0; i < length - 1; i++) {
@@ -41,7 +42,8 @@ void compForceList(double* rr,
 
 void initRandomParticle(Particle *particles,
                         int       noP,
-                        double radius) {
+                        double radius,
+                        double vel) {
   // particles is a array of 2 * noP particles.
 
   srand (time(NULL));
@@ -51,7 +53,6 @@ void initRandomParticle(Particle *particles,
   Particle *particle2 = NULL;
   double theta = 0.0;
   double phi = 0.0;
-  const double vel = sqrt(3*kB*T0/mHe);
 
   for (int i = 0; i < noP; ++i) {
     particle1 = particles + 2*i;
@@ -111,12 +112,31 @@ void initRandomParticle(Particle *particles,
 
 }
 
+
+void moveParticle(Particle *particle, Vector3D *angVel) {
+    double rotAngle = 0.0;
+    Vector3D meanAngVel = {0., 0., 0.};
+    Vector3D rotVector = {0., 0., 0.};
+
+    // Move particle according to angular velocity
+    addVectors (&(particle->angVel), angVel, &meanAngVel);
+    scalarVectorMultiply (0.5, &meanAngVel, &meanAngVel);
+    rotAngle = vectorNorm (&meanAngVel) * dt;
+    scalarVectorMultiply (dt/rotAngle, &meanAngVel, &rotVector);
+
+    // Rotate to move particle
+    rotateVector (&(particle->pos), &rotVector, rotAngle, &(particle->pos));
+    copyVectors (&(particle->angVel), angVel);
+}
+
 void updateParticle(Particle *particle, Vector3D* force,
                     Vector3D *oldAngVel,
                     Vector3D *oldDelAngVel,
                     double radius) {
 
-    double epsilon = 1e-6;
+    double epsilon = 1e-9;
+    Vector3D delAngVel = {0, 0, 0};
+    Vector3D meanDelAngVel = {0., 0., 0.};
 
     // Calculate Angular velocity of particle
     // under force
@@ -125,11 +145,9 @@ void updateParticle(Particle *particle, Vector3D* force,
       crossProduct (&(particle->pos), force, &(particle->torque));
 
       // Change in angular velocity of particle
-      Vector3D delAngVel;
       scalarVectorMultiply(dt / (mHe*radius*radius),
                             &(particle->torque), &delAngVel);
 
-      Vector3D meanDelAngVel = {0., 0., 0.};
       if (vectorNorm (oldDelAngVel) > epsilon) {
         addVectors (oldDelAngVel, &delAngVel , &meanDelAngVel);
         scalarVectorMultiply (0.5*dt, &meanDelAngVel, &meanDelAngVel);
@@ -144,19 +162,40 @@ void updateParticle(Particle *particle, Vector3D* force,
       copyVectors (&delAngVel, oldDelAngVel);
     }
 
-    // Move particle according to angular velocity
-    if (vectorNorm (&(particle->angVel)) > epsilon) {
-      Vector3D meanAngVel = {0, 0, 0};
-      addVectors (&(particle->angVel), oldAngVel, &meanAngVel);
-      scalarVectorMultiply (0.5, &meanAngVel, &meanAngVel);
-      double rotAngle = vectorNorm (&meanAngVel) * dt;
-      Vector3D rotVector = {0, 0, 0};
-      scalarVectorMultiply (dt/rotAngle, &meanAngVel, &rotVector);
+    if (vectorNorm (&(particle->angVel)) > epsilon) moveParticle(particle, oldAngVel);
+}
 
-      // Rotate to move particle
-      rotateVector (&(particle->pos), &rotVector, rotAngle, &(particle->pos));
-      copyVectors (&(particle->angVel), oldAngVel);
-    }
+
+int testWithoutForce(Particle *particle1,
+                     Particle *particle2)  {
+  int controlpar = 0;
+  int time = 0;
+  int dtTest = 1000;
+
+  double controldistance = 20.0;
+  double distance = 0.0;
+
+  Particle* copy1 = (Particle *)malloc (sizeof (Particle));
+  Particle* copy2 = (Particle *)malloc (sizeof (Particle));
+
+  // Copy old particles
+  memcpy(copy1, particle1, sizeof(Particle));
+  memcpy(copy2, particle2, sizeof(Particle));
+
+  while (time < maxtime && !controlpar) {
+    distance = distanceBetweenVectors(&(copy1->pos), &(copy2->pos));
+    if (distance < controldistance) controlpar = 1;
+
+    // Update particle 1
+    moveParticle(copy1, &(copy1->angVel));
+
+    // Update particle 2
+    moveParticle(copy2, &(copy2->angVel));
+
+    time += dtTest;
+  }
+
+  return controlpar;
 
 }
 
@@ -166,14 +205,20 @@ void particleSimulation(int index,
                         double radius,
                         double *Flist) {
 
+  int rkFlag = 0;
   int saveflag = 0;
-  int controlpar = 1;
   int time = 0;
 
   Vector3D oldAngVel1= {0., 0., 0.};
   Vector3D oldAngVel2= {0., 0., 0.};
   Vector3D oldDelAngVel1 = {0, 0, 0};
   Vector3D oldDelAngVel2 = {0, 0, 0};
+
+  int indx = 0;
+  double distance = 0.0;
+  double force = 0.0;
+  Vector3D forc1 = {0, 0, 0};
+  Vector3D forc2 = {0, 0, 0};
   
   char affname1[80];
   char affname2[80];
@@ -188,7 +233,8 @@ void particleSimulation(int index,
     ffile2 = fopen(affname2, "w");
   }
 
-  if (controlpar == 1) {
+  // Check if particle meets without using force
+  if(!testWithoutForce(particle1, particle2))  {
     while(time < maxtime) {
 
       if (saveflag) {
@@ -199,38 +245,36 @@ void particleSimulation(int index,
         fprintf (ffile2,"%d\t%.10lf\t%.10lf\t%.10lf\t%.10lf\n",
                  particle1->success, particle1->time,
                  particle2->pos.x, particle2->pos.y, particle2->pos.z);
-     }
-
-
-      // Determine the force between both particles
-      double distance = distanceBetweenVectors (&(particle1->pos), &(particle2->pos));
-      int index = (int)((distance - 2.005) / 0.01);
-      if (index > 1799) index = 1799;
-      double force = Flist[index];
-
-      // Force on particle 1
-      Vector3D forc1 = {
-        force * (particle1->pos.x - particle2->pos.x) / distance,
-        force * (particle1->pos.y - particle2->pos.y) / distance,
-        force * (particle1->pos.z - particle2->pos.z) / distance,
-      };
-
-      // Force on particle 2
-      Vector3D forc2;
-      scalarVectorMultiply (-1, &forc1, &forc2);
-
-      // Update Particle 1
-      updateParticle (particle1, &forc1, &oldAngVel1, &oldDelAngVel1, radius);
-
-      // Update Particle 2
-      updateParticle (particle2, &forc2, &oldAngVel2, &oldDelAngVel2, radius);
-
-      if ( distanceBetweenVectors (&(particle1->pos), &(particle2->pos)) < icddist) {
-        particle1->success = 1;
-	particle2->success = 1;
-        break;
       }
 
+
+      if (!rkFlag) {
+        // Determine the force between both particles
+        distance = distanceBetweenVectors (&(particle1->pos), &(particle2->pos));
+        indx = (int)((distance - 2.005) / 0.01);
+        if (indx > 1799) indx = 1799;
+        force = Flist[indx];
+
+        // Force on particle 1
+        forc1.x = force * (particle1->pos.x - particle2->pos.x) / distance;
+        forc1.y = force * (particle1->pos.y - particle2->pos.y) / distance;
+        forc1.z = force * (particle1->pos.z - particle2->pos.z) / distance;
+
+        // Force on particle 2
+        scalarVectorMultiply (-1, &forc1, &forc2);
+
+        // Update Particle 1
+        updateParticle (particle1, &forc1, &oldAngVel1, &oldDelAngVel1, radius);
+
+        // Update Particle 2
+        updateParticle (particle2, &forc2, &oldAngVel2, &oldDelAngVel2, radius);
+
+        if ( distanceBetweenVectors (&(particle1->pos), &(particle2->pos)) < icddist) {
+          particle1->success = 1;
+          particle2->success = 1;
+          break;
+        }
+      }
       time += dt;
       particle1->time = time;
       particle2->time = time;

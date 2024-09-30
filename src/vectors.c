@@ -1,4 +1,5 @@
 #include <math.h>
+#include <string.h>
 #include "vectors.h"
 
 // Function to calculate the norm of a vector
@@ -18,9 +19,9 @@ void addVectors(const Vector3D* v1, const Vector3D* v2, Vector3D* result) {
 }
 
 void copyVectors(const Vector3D* v, Vector3D* result) {
-  result->x = v->x;
-  result->y = v->y;
-  result->z = v->z;
+    result->x = v->x;
+    result->y = v->y;
+    result->z = v->z;
 }
 
 // Function to calculate the cross product of two vectors
@@ -40,7 +41,7 @@ void scalarVectorMultiply(double scalar, const Vector3D* v, Vector3D* result) {
 // Function to rotate a vector around a given axis by a specified angle (in radians)
 void rotateVector(const Vector3D* v, const Vector3D* axis, double angle, Vector3D* result) {
     double cosTheta = cos(angle);
-    double sinTheta = sin(angle);
+    double sinTheta = sqrt(1 - cosTheta*cosTheta);
     double dot = dotProduct(axis, v); // Compute dot product of axis and vector
 
     // Rodrigues' rotation formula
@@ -57,6 +58,14 @@ double distanceBetweenVectors(const Vector3D* v1, const Vector3D* v2) {
     return sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+double distanceBetweenVectorsPolar(const double r, const Vector2DSphere* v1, const Vector2DSphere* v2) {
+    double sinth1 = sin(v1->theta);
+    double sinth2 = sin(v2->theta);
+
+    double dsq = 2*r*r * (1 - sinth1 * sinth2 * cos(v1->phi - v2->phi) - sqrt(1 - sinth1*sinth1) * sqrt(1 - sinth2 * sinth2));
+
+    return sqrt(dsq);
+}
 
 // Function to calculate the arc length on a sphere of radius R between two points v1 and v2
 double arcLengthOnSphere(double R, const Vector3D* v1, const Vector3D* v2) {

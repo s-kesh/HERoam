@@ -2,7 +2,8 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -O3 -Wall -Wextra -fopenmp
+CFLAGS = -c -O3 -Wall -Wextra -fopenmp -fopt-info-vec-optimized \
+	 -march=native -fmax-errors=5
 
 # Linker flags
 LDFLAGS = -lm -fopenmp

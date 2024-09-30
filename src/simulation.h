@@ -19,12 +19,18 @@ void compForceList(double* rr,
                    double* Flist, int lenght);
 void initRandomParticle(Particle *particle,
                         int       noP,
-                        double radius);
+                        double radius,
+                        double vel);
+
+void moveParticle(Particle *particle, Vector3D *oldAngVel);
 
 void updateParticle(Particle *particle, Vector3D* force,
                     Vector3D *oldAngVel,
                     Vector3D *oldDelAngVel,
                     double radius);
+
+int testWithoutForce(Particle *particle1,
+                      Particle *particle2);
 
 void particleSimulation(int index, Particle *particle1, Particle *particle2,
                         double radius, double *Flist);
