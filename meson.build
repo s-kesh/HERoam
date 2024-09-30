@@ -8,8 +8,9 @@ srcs = files(
 )
 
 # Build Type options
-debug_flags = ['-g', '-pg', '-Wall', '-Wextra', '-fopenmp']
-optimized_flags = ['-O3', '-march=native', '-Wall', '-Wextra', '-fopenmp', '-fopt-info-vec-optimized', '-fmax-errors=5']
+debug_flags = ['-g', '-pg', '-Wall', '-Wextra']
+optimized_flags = ['-O3', '-march=native', '-Wall', '-Wextra',
+                    '-fopt-info-vec-optimized', '-fmax-errors=5']
 
 # Flags based on buildtype
 if get_option('buildtype') == 'debug'
@@ -19,8 +20,8 @@ else
 endif
 
 # Linker flags
-debug_ldflags = ['-pg', '-lm', '-fopenmp']
-optimized_ldflags = ['-lm', '-fopenmp']
+debug_ldflags = ['-pg', '-lm']
+optimized_ldflags = ['-lm']
 
 # Flags based on buildtype
 if get_option('buildtype') == 'debug'
@@ -29,9 +30,19 @@ else
     ldflags = optimized_ldflags
 endif
 
+# Dependencies
+omp_dep = dependency('openmp', required: false)
 
 # Build
-executable('HeRoam',
+if omp_dep.found()
+   exe = executable('HeRoam',
+            srcs,
+            dependencies: omp_dep,
+            c_args: cflags,
+            link_args: ldflags)
+else
+    exe = executable('HeRoam',
             srcs,
             c_args: cflags,
             link_args: ldflags)
+endif
