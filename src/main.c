@@ -21,10 +21,10 @@ int main(int argc, char *argv[]) {
         radius = atof(optarg);
         break;
       case 'v':
-        radius = atof(optarg);
+        velocity = atof(optarg);
         break;
       case 'n':
-        velocity = atoi(optarg);
+        number = atoi(optarg);
         break;
       default: /* '?' */
         printUsage(argv[0]);
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
   // Simulate particles
   #pragma omp parallel for
   for (int i = 0; i < noP; ++i) {
-    particleSimulation (i, particles + 2*i, particles +2*i + 1,
+    particleSimulation (i, particles + 2*i, particles + 2*i + 1,
                         radius, Flist);
   }
 
