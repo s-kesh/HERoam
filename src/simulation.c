@@ -58,6 +58,8 @@ void initRandomParticle(Particle *particles,
     particle1 = particles + 2*i;
     particle2 = particles + 2*i + 1;
 
+    particle1->index = i;
+    particle2->index = i;
     particle1->time = 0;
     particle2->time = 0;
     particle1->success = 0;
@@ -214,6 +216,7 @@ void particleSimulation(int index,
   Vector3D oldDelAngVel1 = {0, 0, 0};
   Vector3D oldDelAngVel2 = {0, 0, 0};
 
+  double indxd = 0.0;
   int indx = 0;
   double distance = 0.0;
   double force = 0.0;
@@ -251,7 +254,10 @@ void particleSimulation(int index,
       if (!rkFlag) {
         // Determine the force between both particles
         distance = distanceBetweenVectors (&(particle1->pos), &(particle2->pos));
-        indx = (int)((distance - 2.005) / 0.01);
+        indxd = (distance - 2.005) / 0.01;
+        if (indxd < 22.0) indx = (int)(indxd);
+        else indx = 2000;
+
         if (indx > 1799) indx = 1799;
         force = Flist[indx];
 

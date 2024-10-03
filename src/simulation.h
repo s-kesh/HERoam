@@ -4,6 +4,7 @@
 #include "vectors.h"
 
 typedef struct {
+  int index;
   int success;
   double time;
   Vector3D pos;
